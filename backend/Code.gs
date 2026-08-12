@@ -25,6 +25,8 @@ function handleResponse(e) {
   
   try {
     switch (action) {
+      case 'getKines':
+        return setCorsHeaders(getKines());
       case 'login':
         return setCorsHeaders(login(e.parameter.id_kine, e.parameter.pin));
       case 'getDashboard':
@@ -80,6 +82,20 @@ function login(idKine, pin) {
     };
   } else {
     return { status: 'error', message: 'Credenciales inválidas' };
+  }
+}
+
+// 1.5. Endpoint Obtener Kinesiólogos
+function getKines() {
+  try {
+    const kines = getSheetData('Kinesiologos');
+    const kinesList = kines.map(k => ({
+      id: k.ID_Kine,
+      nombre: k.Nombre
+    }));
+    return { status: 'success', data: kinesList };
+  } catch (error) {
+    return { status: 'error', message: 'No se pudieron cargar los kinesiólogos' };
   }
 }
 

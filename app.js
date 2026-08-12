@@ -336,4 +336,21 @@ async function handleMarkAttendance() {
 function showLogin() {
     views.dashboard.classList.remove('active');
     views.login.classList.add('active');
+    loadKines();
+}
+
+async function loadKines() {
+    const kineSelector = document.getElementById('kine-selector');
+    try {
+        const res = await fetchAPI('getKines');
+        if (res.status === 'success') {
+            let html = '<option value="" disabled selected>Seleccione su perfil</option>';
+            res.data.forEach(k => {
+                html += `<option value="${k.id}">${k.nombre} (ID: ${k.id})</option>`;
+            });
+            kineSelector.innerHTML = html;
+        }
+    } catch (error) {
+        kineSelector.innerHTML = '<option value="" disabled selected>Error cargando perfiles</option>';
+    }
 }
