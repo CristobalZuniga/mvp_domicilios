@@ -86,14 +86,22 @@
                 <div id="patient-info-panel" class="info-panel hidden">
                     <div class="info-item">
                         <span class="info-label">Sesiones restantes</span>
-                        <span id="sessions-count" class="info-value highlight-blue">--</span>
+                        <span id="sessions-count" class="info-value">...</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Estado de pago</span>
+                        <span class="info-label">Estado de Pago</span>
                         <div id="payment-status" class="status-badge">
-                            <span class="status-dot"></span>
-                            <span class="status-text">Cargando...</span>
+                            <span class="status-icon"></span>
+                            <span class="status-text">...</span>
                         </div>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="info-label">Contacto</span>
+                        <span id="patient-phone" class="info-value text-small">...</span>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="info-label">Domicilio</span>
+                        <span id="patient-address" class="info-value text-small">...</span>
                     </div>
                 </div>
 
@@ -134,12 +142,36 @@
 
         <main class="dashboard-content">
             <div class="admin-tabs">
-                <button class="admin-tab-btn active" data-target="panel-planes">Planes</button>
+                <button class="admin-tab-btn active" data-target="panel-pacientes">Pacientes</button>
+                <button class="admin-tab-btn" data-target="panel-planes">Planes</button>
                 <button class="admin-tab-btn" data-target="panel-pagos">Pagos</button>
             </div>
 
+            <!-- Panel Pacientes -->
+            <div id="panel-pacientes" class="admin-panel active card">
+                <h3>Ingresar Nuevo Paciente</h3>
+                <form id="form-add-patient">
+                    <div class="input-group">
+                        <label>Nombre Completo</label>
+                        <input type="text" id="input-patient-name" placeholder="Ej: Juan Pérez" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Teléfono</label>
+                        <input type="tel" id="input-patient-phone" placeholder="Ej: +56912345678" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Dirección / Domicilio</label>
+                        <input type="text" id="input-patient-address" placeholder="Ej: Av. Siempre Viva 123, Depto 4B" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-submit-patient">
+                        <span class="btn-text">Guardar Paciente</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
+            </div>
+
             <!-- Panel Planes -->
-            <div id="panel-planes" class="admin-panel active card">
+            <div id="panel-planes" class="admin-panel card hidden">
                 <h3>Ingresar Nuevo Plan</h3>
                 <form id="form-add-plan">
                     <div class="input-group">

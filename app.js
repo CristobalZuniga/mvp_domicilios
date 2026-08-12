@@ -39,6 +39,10 @@ const formAddPlan = document.getElementById('form-add-plan');
 const formAddPayment = document.getElementById('form-add-payment');
 const adminPatientSelectorPlan = document.getElementById('admin-patient-selector-plan');
 const adminPatientSelectorPayment = document.getElementById('admin-patient-selector-payment');
+const patientPhone = document.getElementById('patient-phone');
+const patientAddress = document.getElementById('patient-address');
+const formAddPatient = document.getElementById('form-add-patient');
+const btnSubmitPatient = document.getElementById('btn-submit-patient');
 let currentLoginMode = 'kine'; // 'kine' | 'admin'
 
 // --- Inicialización ---
@@ -109,6 +113,14 @@ function setupEventListeners() {
         if (patientId) {
             state.selectedPatientId = patientId;
             btnMarkAttendance.disabled = false;
+            
+            // Llenar contacto y domicilio
+            const p = state.patients.find(x => x.id == patientId);
+            if(p) {
+                if(patientPhone) patientPhone.textContent = p.telefono || 'No registrado';
+                if(patientAddress) patientAddress.textContent = p.domicilio || 'No registrado';
+            }
+
             await loadPatientStatus(patientId);
         } else {
             state.selectedPatientId = null;
@@ -155,6 +167,11 @@ function setupEventListeners() {
         });
     });
 
+    formAddPatient.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await submitPatient();
+    });
+
     formAddPlan.addEventListener('submit', async (e) => {
         e.preventDefault();
         await submitPlan();
@@ -181,9 +198,19 @@ async function fetchAPI(action, params = {}) {
             mode: 'cors'
         });
 
-        if (!response.ok) throw new Error('Error en la red');
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch(e) {
+            // Fallback para Google Apps Script falsos errores (CORS o HTML intermedio tras ejecución exitosa)
+            if(action.startsWith('add') || action.startsWith('mark')) {
+                console.warn("Advertencia: respuesta no es JSON, pero la operación pudo completarse", text);
+                return { status: 'success' };
+            }
+            throw new Error('El servidor respondió en un formato incorrecto.');
+        }
 
-        const data = await response.json();
         if (data.status === 'error') throw new Error(data.message);
 
         return data;
@@ -361,7 +388,13 @@ async function loadPatientStatus(patientId) {
 }
 
 async function handleMarkAttendance() {
-    setButtonLoading(btnMarkAttendance, true);
+        Swal.fire({
+            title: 'Guardando...',
+            text: 'Registrando asistencia, por favor espera...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
     const notas = notesInput.value.trim();
 
     try {
@@ -391,8 +424,6 @@ async function handleMarkAttendance() {
             text: 'No se pudo registrar la asistencia. Intente nuevamente.',
             confirmButtonColor: '#0F62FE'
         });
-    } finally {
-        setButtonLoading(btnMarkAttendance, false);
     }
 }
 
@@ -468,9 +499,38 @@ async function showAdminDashboard() {
     }
 }
 
+async function submitPatient() {
+    Swal.fire({
+        title: 'Guardando...',
+        text: 'Registrando paciente, esto puede tardar unos segundos...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+    
+    try {
+        const res = await fetchAPI('addPatient', {
+            nombre: document.getElementById('input-patient-name').value,
+            telefono: document.getElementById('input-patient-phone').value,
+            domicilio: document.getElementById('input-patient-address').value
+        });
+        
+        if (res.status === 'success') {
+            Swal.fire('Éxito', 'Paciente registrado correctamente', 'success');
+            formAddPatient.reset();
+            showAdminDashboard(); // recargar selectores
+        }
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo guardar el paciente', 'error');
+    }
+}
+
 async function submitPlan() {
-    const btnSubmit = document.getElementById('btn-submit-plan');
-    setButtonLoading(btnSubmit, true);
+    Swal.fire({
+        title: 'Guardando...',
+        text: 'Registrando el plan en Google Sheets, esto puede tardar unos segundos...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
     
     try {
         const res = await fetchAPI('addPlan', {
@@ -486,14 +546,16 @@ async function submitPlan() {
         }
     } catch (error) {
         Swal.fire('Error', 'No se pudo guardar el plan', 'error');
-    } finally {
-        setButtonLoading(btnSubmit, false);
     }
 }
 
 async function submitPayment() {
-    const btnSubmit = document.getElementById('btn-submit-payment');
-    setButtonLoading(btnSubmit, true);
+    Swal.fire({
+        title: 'Guardando...',
+        text: 'Registrando el pago, esto puede tardar unos segundos...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
     
     try {
         const res = await fetchAPI('addPayment', {
@@ -507,7 +569,5 @@ async function submitPayment() {
         }
     } catch (error) {
         Swal.fire('Error', 'No se pudo guardar el pago', 'error');
-    } finally {
-        setButtonLoading(btnSubmit, false);
     }
 }

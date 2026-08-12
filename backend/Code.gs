@@ -55,6 +55,12 @@ function handleResponse(e) {
           e.parameter.id_paciente,
           e.parameter.monto_pagado
         ));
+      case 'addPatient':
+        return setCorsHeaders(addPatient(
+          e.parameter.nombre,
+          e.parameter.telefono,
+          e.parameter.domicilio
+        ));
       default:
         return setCorsHeaders({ status: 'error', message: 'Action not found' });
     }
@@ -280,4 +286,26 @@ function addPayment(idPaciente, montoPagado) {
   ]);
   
   return { status: 'success', message: 'Pago registrado correctamente' };
+}
+
+function addPatient(nombre, telefono, domicilio) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Pacientes');
+  if (!sheet) throw new Error('Hoja Pacientes no encontrada');
+  
+  const idPaciente = 'PAC-' + new Date().getTime();
+  
+  sheet.appendRow([
+    idPaciente,
+    nombre,
+    telefono,
+    domicilio,
+    true
+  ]);
+  
+  return { 
+    status: 'success', 
+    message: 'Paciente registrado correctamente',
+    data: { id: idPaciente, nombre: nombre } 
+  };
 }

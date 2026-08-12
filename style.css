@@ -335,6 +335,25 @@ textarea {
 .success .status-dot { background-color: var(--success); }
 .error .status-dot { background-color: var(--error); }
 
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--bg-color);
+    padding: 16px;
+    border-radius: 12px;
+    flex: 1;
+}
+
+.info-item.full-width {
+    flex: 100%;
+}
+
+.text-small {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
 /* History List */
 .history-list {
     display: flex;
