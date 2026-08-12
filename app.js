@@ -69,6 +69,7 @@ function setupEventListeners() {
         tabKine.classList.add('active');
         tabAdmin.classList.remove('active');
         kineSelectorGroup.style.display = 'block';
+        document.getElementById('kine-selector').required = true;
     });
     
     tabAdmin.addEventListener('click', () => {
@@ -76,6 +77,7 @@ function setupEventListeners() {
         tabAdmin.classList.add('active');
         tabKine.classList.remove('active');
         kineSelectorGroup.style.display = 'none';
+        document.getElementById('kine-selector').required = false;
     });
 
     // Login Form Submit
