@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KineControl - Gestión a Domicilio</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 para notificaciones elegantes -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Pantalla de Login -->
+    <section id="login-view" class="view active">
+        <div class="login-card glass-panel">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                </div>
+                <h1>KineControl</h1>
+                <p>Gestión de Asistencias a Domicilio</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="kine-selector">Kinesiólogo</label>
+                    <div class="select-wrapper">
+                        <select id="kine-selector" required>
+                            <option value="" disabled selected>Seleccione su perfil</option>
+                            <!-- Opciones quemadas para el MVP. Idealmente se cargarían de la API -->
+                            <option value="1">Kine 1 (ID: 1)</option>
+                            <option value="2">Kine 2 (ID: 2)</option>
+                            <option value="3">Kine 3 (ID: 3)</option>
+                        </select>
+                        <svg class="select-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="pin-input">PIN de Acceso</label>
+                    <input type="password" id="pin-input" placeholder="••••" maxlength="4" pattern="\d{4}" required>
+                </div>
+
+                <button type="submit" class="btn-primary" id="btn-login">
+                    <span class="btn-text">Ingresar</span>
+                    <div class="loader hidden"></div>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Pantalla Principal (Dashboard) -->
+    <section id="dashboard-view" class="view">
+        <header class="app-header">
+            <div class="header-content">
+                <h2 id="greeting">Hola, Kinesiólogo</h2>
+                <button id="btn-logout" class="btn-icon" aria-label="Cerrar sesión">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <!-- Sección A: Nueva Asistencia -->
+            <div class="card add-attendance-card">
+                <h3>Nueva Asistencia</h3>
+                
+                <div class="input-group">
+                    <label for="patient-selector">Buscar Paciente</label>
+                    <div class="select-wrapper">
+                        <select id="patient-selector">
+                            <option value="" disabled selected>Cargando pacientes...</option>
+                        </select>
+                        <svg class="select-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                </div>
+
+                <!-- Panel informativo del paciente (oculto por defecto) -->
+                <div id="patient-info-panel" class="info-panel hidden">
+                    <div class="info-item">
+                        <span class="info-label">Sesiones restantes</span>
+                        <span id="sessions-count" class="info-value highlight-blue">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Estado de pago</span>
+                        <div id="payment-status" class="status-badge">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="notes-input">Notas de la sesión (Opcional)</label>
+                    <textarea id="notes-input" placeholder="Observaciones sobre la evolución, ejercicios realizados..." rows="3"></textarea>
+                </div>
+
+                <button id="btn-mark-attendance" class="btn-primary" disabled>
+                    <span class="btn-text">Marcar Asistencia</span>
+                    <div class="loader hidden"></div>
+                </button>
+            </div>
+
+            <!-- Sección B: Historial -->
+            <div class="card history-card">
+                <h3>Últimas Asistencias</h3>
+                <div id="history-list" class="history-list">
+                    <div class="empty-state">
+                        <div class="spinner-small"></div>
+                        <p>Cargando historial...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
