@@ -1,573 +1,564 @@
-// --- Configuración ---
-// TODO: El desarrollador debe reemplazar esta URL con la URL de su Web App de Google Apps Script
+// ─── Configuración ────────────────────────────────────────────
 const API_URL = "https://script.google.com/macros/s/AKfycbxZeBybZaiGqirVesIYaH67CdV5lExf_hZpT7bI7ph_Fx83cXSWUG1yX8GSZYLEPN0G/exec";
 
-// --- Estado Global ---
+// ─── Estado global ─────────────────────────────────────────────
 let state = {
-    kineId: null,
-    kineName: null,
-    patients: [],
-    selectedPatientId: null
+  kineId: null,
+  kineName: null,
+  patients: [],
+  selectedPatientId: null
 };
 
-// --- Elementos del DOM ---
+let currentLoginMode = 'kine';
+let pinValue = '';
+
+// ─── DOM References ────────────────────────────────────────────
 const views = {
-    login: document.getElementById('login-view'),
-    dashboard: document.getElementById('dashboard-view'),
-    adminDashboard: document.getElementById('admin-dashboard-view')
+  login:     document.getElementById('login-view'),
+  dashboard: document.getElementById('dashboard-view'),
+  admin:     document.getElementById('admin-dashboard-view')
 };
 
-const loginForm = document.getElementById('login-form');
-const btnLogin = document.getElementById('btn-login');
-const btnLogout = document.getElementById('btn-logout');
+// Login
+const loginForm           = document.getElementById('login-form');
+const tabKine             = document.getElementById('tab-kine');
+const tabAdmin            = document.getElementById('tab-admin');
+const kineSelectorGroup   = document.getElementById('kine-selector-group');
+const kineSelector        = document.getElementById('kine-selector');
+const pinInput            = document.getElementById('pin-input');
+const pinDisplay          = document.getElementById('pin-display');
+const btnLogin            = document.getElementById('btn-login');
 
-const greeting = document.getElementById('greeting');
-const patientSelector = document.getElementById('patient-selector');
-const patientInfoPanel = document.getElementById('patient-info-panel');
-const sessionsCount = document.getElementById('sessions-count');
-const paymentStatus = document.getElementById('payment-status');
-const notesInput = document.getElementById('notes-input');
-const btnMarkAttendance = document.getElementById('btn-mark-attendance');
-const historyList = document.getElementById('history-list');
+// Kine dashboard
+const greetingEl          = document.getElementById('greeting');
+const btnLogout           = document.getElementById('btn-logout');
+const patientSelector     = document.getElementById('patient-selector');
+const patientInfoPanel    = document.getElementById('patient-info-panel');
+const sessionsCount       = document.getElementById('sessions-count');
+const paymentStatusText   = document.getElementById('payment-status-text');
+const patientPhone        = document.getElementById('patient-phone');
+const patientPhoneLink    = document.getElementById('patient-phone-link');
+const patientAddress      = document.getElementById('patient-address');
+const notesInput          = document.getElementById('notes-input');
+const btnMarkAttendance   = document.getElementById('btn-mark-attendance');
+const historyList         = document.getElementById('history-list');
 
-// Elementos Admin
-const tabKine = document.getElementById('tab-kine');
-const tabAdmin = document.getElementById('tab-admin');
-const kineSelectorGroup = document.getElementById('kine-selector-group');
-const btnAdminLogout = document.getElementById('btn-admin-logout');
-const formAddPlan = document.getElementById('form-add-plan');
-const formAddPayment = document.getElementById('form-add-payment');
-const adminPatientSelectorPlan = document.getElementById('admin-patient-selector-plan');
+// Admin dashboard
+const btnAdminLogout              = document.getElementById('btn-admin-logout');
+const adminPatientSelectorPlan    = document.getElementById('admin-patient-selector-plan');
 const adminPatientSelectorPayment = document.getElementById('admin-patient-selector-payment');
-const patientPhone = document.getElementById('patient-phone');
-const patientAddress = document.getElementById('patient-address');
-const formAddPatient = document.getElementById('form-add-patient');
-const btnSubmitPatient = document.getElementById('btn-submit-patient');
-let currentLoginMode = 'kine'; // 'kine' | 'admin'
+const formAddPatient              = document.getElementById('form-add-patient');
+const formAddPlan                 = document.getElementById('form-add-plan');
+const formAddPayment              = document.getElementById('form-add-payment');
 
-// --- Inicialización ---
+// ─── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    // Verificar si hay sesión activa (almacenada en localStorage para el MVP)
-    const storedSession = localStorage.getItem('kine_session');
-    if (storedSession) {
-        const session = JSON.parse(storedSession);
-        if (session.role === 'admin') {
-            showAdminDashboard();
-        } else {
-            state.kineId = session.id;
-            state.kineName = session.nombre;
-            showDashboard();
-        }
-    } else {
-        showLogin();
-    }
+  buildPinDisplay();
+  setupNumpad();
+  setupLoginTabs();
 
-    setupEventListeners();
+  const stored = localStorage.getItem('kine_session');
+  if (stored) {
+    const session = JSON.parse(stored);
+    if (session.role === 'admin') {
+      showAdminDashboard();
+    } else {
+      state.kineId   = session.id;
+      state.kineName = session.nombre;
+      showKineDashboard();
+    }
+  } else {
+    showLogin();
+  }
+
+  setupKineListeners();
+  setupAdminListeners();
 });
 
-// --- Event Listeners ---
-function setupEventListeners() {
-    // Login Tabs
-    tabKine.addEventListener('click', () => {
-        currentLoginMode = 'kine';
-        tabKine.classList.add('active');
-        tabAdmin.classList.remove('active');
-        kineSelectorGroup.style.display = 'block';
-        document.getElementById('kine-selector').required = true;
-    });
-    
-    tabAdmin.addEventListener('click', () => {
-        currentLoginMode = 'admin';
-        tabAdmin.classList.add('active');
-        tabKine.classList.remove('active');
-        kineSelectorGroup.style.display = 'none';
-        document.getElementById('kine-selector').required = false;
-    });
+// ════════════════════════════════════════════════════════════════
+// PIN NUMPAD
+// ════════════════════════════════════════════════════════════════
 
-    // Login Form Submit
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const pin = document.getElementById('pin-input').value;
-        
-        if (currentLoginMode === 'kine') {
-            const kineId = document.getElementById('kine-selector').value;
-            if (!kineId || !pin) return;
-            await handleLogin(kineId, pin);
-        } else {
-            if (!pin) return;
-            await handleAdminLogin(pin);
-        }
-    });
-
-    // Logout
-    btnLogout.addEventListener('click', () => {
-        localStorage.removeItem('kine_session');
-        state = { kineId: null, kineName: null, patients: [], selectedPatientId: null };
-        document.getElementById('pin-input').value = '';
-        showLogin();
-    });
-
-    // Selección de paciente
-    patientSelector.addEventListener('change', async (e) => {
-        const patientId = e.target.value;
-        if (patientId) {
-            state.selectedPatientId = patientId;
-            btnMarkAttendance.disabled = false;
-            
-            // Llenar contacto y domicilio
-            const p = state.patients.find(x => x.id == patientId);
-            if(p) {
-                if(patientPhone) patientPhone.textContent = p.telefono || 'No registrado';
-                if(patientAddress) patientAddress.textContent = p.domicilio || 'No registrado';
-            }
-
-            await loadPatientStatus(patientId);
-        } else {
-            state.selectedPatientId = null;
-            btnMarkAttendance.disabled = true;
-            patientInfoPanel.classList.add('hidden');
-        }
-    });
-
-    // Marcar asistencia
-    btnMarkAttendance.addEventListener('click', async () => {
-        if (!state.selectedPatientId) return;
-
-        // Confirmación
-        const result = await Swal.fire({
-            title: '¿Confirmar asistencia?',
-            text: "Se registrará una sesión para este paciente.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0F62FE',
-            cancelButtonColor: '#da1e28',
-            confirmButtonText: 'Sí, registrar',
-            cancelButtonText: 'Cancelar'
-        });
-
-        if (result.isConfirmed) {
-            await handleMarkAttendance();
-        }
-    });
-
-    // --- Listeners de Admin ---
-    btnAdminLogout.addEventListener('click', () => {
-        localStorage.removeItem('kine_session');
-        document.getElementById('pin-input').value = '';
-        showLogin();
-    });
-
-    document.querySelectorAll('.admin-tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.admin-panel').forEach(p => p.classList.add('hidden'));
-            
-            e.target.classList.add('active');
-            document.getElementById(e.target.dataset.target).classList.remove('hidden');
-        });
-    });
-
-    formAddPatient.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await submitPatient();
-    });
-
-    formAddPlan.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await submitPlan();
-    });
-
-    formAddPayment.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await submitPayment();
-    });
+function buildPinDisplay() {
+  pinDisplay.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'pin-dot';
+    dot.id = `pin-dot-${i}`;
+    pinDisplay.appendChild(dot);
+  }
 }
 
-// --- API Helpers ---
-async function fetchAPI(action, params = {}) {
-    // Para peticiones GET a Apps Script (recomendado para CORS básico)
-    const url = new URL(API_URL);
-    url.searchParams.append('action', action);
-    for (const [key, value] of Object.entries(params)) {
-        url.searchParams.append(key, value);
-    }
-
-    try {
-        const response = await fetch(url.toString(), {
-            method: 'GET',
-            mode: 'cors'
-        });
-
-        const text = await response.text();
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch(e) {
-            // Fallback para Google Apps Script falsos errores (CORS o HTML intermedio tras ejecución exitosa)
-            if(action.startsWith('add') || action.startsWith('mark')) {
-                console.warn("Advertencia: respuesta no es JSON, pero la operación pudo completarse", text);
-                return { status: 'success' };
-            }
-            throw new Error('El servidor respondió en un formato incorrecto.');
-        }
-
-        if (data.status === 'error') throw new Error(data.message);
-
-        return data;
-    } catch (error) {
-        console.error('Error API:', error);
-        throw error;
-    }
+function updatePinDisplay() {
+  for (let i = 0; i < 6; i++) {
+    const dot = document.getElementById(`pin-dot-${i}`);
+    if (dot) dot.classList.toggle('filled', i < pinValue.length);
+  }
+  pinInput.value = pinValue;
+  btnLogin.disabled = pinValue.length < 4;
 }
 
-function setButtonLoading(button, isLoading) {
-    if (isLoading) {
-        button.classList.add('loading');
-        button.disabled = true;
+function setupNumpad() {
+  document.querySelectorAll('.num-btn').forEach(btn => {
+    const val = btn.dataset.val;
+    if (!val || btn.id === 'btn-login') return;
+
+    btn.addEventListener('click', () => {
+      if (val === 'clear') {
+        pinValue = pinValue.slice(0, -1);
+      } else if (pinValue.length < 6) {
+        pinValue += val;
+      }
+      updatePinDisplay();
+    });
+  });
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pin = pinValue;
+    if (!pin) return;
+
+    if (currentLoginMode === 'kine') {
+      const kineId = kineSelector.value;
+      if (!kineId) {
+        showToast('error', 'Selecciona tu perfil de kinesiólogo');
+        return;
+      }
+      await handleKineLogin(kineId, pin);
     } else {
-        button.classList.remove('loading');
-        button.disabled = false;
+      await handleAdminLogin(pin);
     }
+  });
 }
 
-// --- Lógica de Negocio ---
-async function handleLogin(id, pin) {
-    setButtonLoading(btnLogin, true);
+// ════════════════════════════════════════════════════════════════
+// TABS DE LOGIN
+// ════════════════════════════════════════════════════════════════
 
-    try {
-        const res = await fetchAPI('login', { id_kine: id, pin: pin });
+function setupLoginTabs() {
+  tabKine.addEventListener('click', () => {
+    currentLoginMode = 'kine';
+    tabKine.classList.add('active');
+    tabAdmin.classList.remove('active');
+    kineSelectorGroup.style.display = 'flex';
+    kineSelector.required = true;
+    pinValue = '';
+    updatePinDisplay();
+  });
 
-        if (res.status === 'success') {
-            state.kineId = res.data.id;
-            state.kineName = res.data.nombre;
-
-            // Guardar sesión simple
-            localStorage.setItem('kine_session', JSON.stringify({
-                id: state.kineId,
-                nombre: state.kineName
-            }));
-
-            showDashboard();
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de acceso',
-            text: error.message || 'Credenciales inválidas. Intente nuevamente.',
-            confirmButtonColor: '#0F62FE'
-        });
-    } finally {
-        setButtonLoading(btnLogin, false);
-    }
+  tabAdmin.addEventListener('click', () => {
+    currentLoginMode = 'admin';
+    tabAdmin.classList.add('active');
+    tabKine.classList.remove('active');
+    kineSelectorGroup.style.display = 'none';
+    kineSelector.required = false;
+    pinValue = '';
+    updatePinDisplay();
+  });
 }
 
-async function showDashboard() {
-    views.login.classList.remove('active');
-    views.dashboard.classList.add('active');
+// ════════════════════════════════════════════════════════════════
+// KINESIÓLOGO LISTENERS
+// ════════════════════════════════════════════════════════════════
 
-    greeting.textContent = `Hola, ${state.kineName}`;
+function setupKineListeners() {
+  btnLogout.addEventListener('click', doLogout);
 
-    // Resetear form
-    patientSelector.innerHTML = '<option value="" disabled selected>Cargando pacientes...</option>';
-    patientInfoPanel.classList.add('hidden');
-    notesInput.value = '';
-    btnMarkAttendance.disabled = true;
-    historyList.innerHTML = `
-        <div class="empty-state">
-            <div class="spinner-small"></div>
-            <p>Cargando historial...</p>
-        </div>
-    `;
-
-    try {
-        const res = await fetchAPI('getDashboard', { id_kine: state.kineId });
-
-        if (res.status === 'success') {
-            state.patients = res.data.pacientes;
-            renderPatientSelector();
-            renderHistory(res.data.historial);
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo cargar la información del panel.',
-            confirmButtonColor: '#0F62FE'
-        });
-    }
-}
-
-function renderPatientSelector() {
-    if (state.patients.length === 0) {
-        patientSelector.innerHTML = '<option value="" disabled selected>No hay pacientes activos</option>';
-        return;
+  patientSelector.addEventListener('change', async (e) => {
+    const id = e.target.value;
+    if (!id) {
+      state.selectedPatientId = null;
+      btnMarkAttendance.disabled = true;
+      patientInfoPanel.classList.add('hidden');
+      return;
     }
 
-    let html = '<option value="" disabled selected>Seleccione un paciente</option>';
-    state.patients.forEach(p => {
-        html += `<option value="${p.id}">${p.nombre}</option>`;
-    });
-    patientSelector.innerHTML = html;
-}
+    state.selectedPatientId = id;
+    btnMarkAttendance.disabled = false;
 
-function renderHistory(historial) {
-    if (!historial || historial.length === 0) {
-        historyList.innerHTML = `
-            <div class="empty-state">
-                <p>Aún no hay asistencias registradas.</p>
-            </div>
-        `;
-        return;
+    // Mostrar contacto inmediatamente desde la caché local
+    const p = state.patients.find(x => String(x.id) === String(id));
+    if (p) {
+      const phone = p.telefono || 'No registrado';
+      const address = p.domicilio || 'No registrado';
+      patientPhone.textContent = phone;
+      patientPhoneLink.href = phone !== 'No registrado' ? `tel:${phone}` : '#';
+      patientAddress.textContent = address;
     }
 
-    let html = '';
-    historial.forEach(item => {
-        const date = new Date(item.fecha).toLocaleString('es-ES', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        html += `
-            <div class="history-item">
-                <div class="history-header">
-                    <span class="history-patient">${item.paciente}</span>
-                    <span class="history-date">${date}</span>
-                </div>
-                ${item.notas ? `<p class="history-notes">"${item.notas}"</p>` : ''}
-            </div>
-        `;
-    });
-
-    historyList.innerHTML = html;
-}
-
-async function loadPatientStatus(patientId) {
-    // Mostrar loader interno
-    patientInfoPanel.classList.remove('hidden');
+    // Mostrar panel con loader mientras carga el estado del servidor
     sessionsCount.textContent = '...';
-    sessionsCount.className = 'info-value'; // Reset color
+    sessionsCount.className = 'stat-value';
+    paymentStatusText.textContent = '...';
+    paymentStatusText.className = 'stat-value';
+    patientInfoPanel.classList.remove('hidden');
 
-    const statusText = paymentStatus.querySelector('.status-text');
-    paymentStatus.className = 'status-badge';
-    statusText.textContent = 'Cargando...';
+    await loadPatientStatus(id);
+  });
 
-    try {
-        const res = await fetchAPI('getPatientStatus', { id_paciente: patientId });
+  btnMarkAttendance.addEventListener('click', async () => {
+    if (!state.selectedPatientId) return;
 
-        if (res.status === 'success') {
-            const { sesionesRestantes, pagoAlDia } = res.data;
+    const result = await Swal.fire({
+      title: '¿Confirmar asistencia?',
+      text: 'Se registrará una sesión para este paciente.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#374151',
+      confirmButtonText: 'Sí, registrar',
+      cancelButtonText: 'Cancelar',
+      background: '#1e2535',
+      color: '#f1f5f9'
+    });
 
-            // Actualizar Sesiones
-            sessionsCount.textContent = sesionesRestantes;
-            if (sesionesRestantes <= 0) {
-                sessionsCount.classList.add('error');
-            } else if (sesionesRestantes <= 2) {
-                sessionsCount.style.color = 'var(--warning)';
-            } else {
-                sessionsCount.classList.add('highlight-blue');
-            }
-
-            // Actualizar Semáforo
-            if (pagoAlDia) {
-                paymentStatus.className = 'status-badge success';
-                statusText.textContent = 'Al día';
-            } else {
-                paymentStatus.className = 'status-badge error';
-                statusText.textContent = 'Pago pendiente';
-            }
-        }
-    } catch (error) {
-        patientInfoPanel.classList.add('hidden');
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo obtener el estado del paciente.',
-            confirmButtonColor: '#0F62FE'
-        });
-    }
+    if (result.isConfirmed) await handleMarkAttendance();
+  });
 }
 
-async function handleMarkAttendance() {
-        Swal.fire({
-            title: 'Guardando...',
-            text: 'Registrando asistencia, por favor espera...',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
+// ════════════════════════════════════════════════════════════════
+// ADMIN LISTENERS
+// ════════════════════════════════════════════════════════════════
 
-    const notas = notesInput.value.trim();
+function setupAdminListeners() {
+  btnAdminLogout.addEventListener('click', doLogout);
 
-    try {
-        const res = await fetchAPI('markAttendance', {
-            id_kine: state.kineId,
-            id_paciente: state.selectedPatientId,
-            notas: notas
-        });
+  // Sidenav
+  document.querySelectorAll('.sidenav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sidenav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-panel').forEach(p => {
+        p.classList.remove('active');
+        p.classList.add('hidden');
+      });
+      btn.classList.add('active');
+      const target = document.getElementById(btn.dataset.target);
+      if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('active');
+      }
+    });
+  });
 
-        if (res.status === 'success') {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Asistencia registrada!',
-                text: 'La sesión se ha guardado correctamente.',
-                confirmButtonColor: '#0F62FE',
-                timer: 2000,
-                showConfirmButton: false
-            });
+  formAddPatient.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitPatient();
+  });
 
-            // Recargar dashboard para actualizar historial y estado
-            showDashboard();
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo registrar la asistencia. Intente nuevamente.',
-            confirmButtonColor: '#0F62FE'
-        });
-    }
+  formAddPlan.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitPlan();
+  });
+
+  formAddPayment.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitPayment();
+  });
 }
 
-// --- Navegación simple ---
+// ════════════════════════════════════════════════════════════════
+// API HELPER — con manejo robusto de Apps Script
+// ════════════════════════════════════════════════════════════════
+
+async function fetchAPI(action, params = {}) {
+  const url = new URL(API_URL);
+  url.searchParams.append('action', action);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.append(key, String(value));
+  }
+
+  try {
+    const response = await fetch(url.toString(), { method: 'GET', mode: 'cors' });
+    const text = await response.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      // Apps Script a veces responde con HTML aunque ejecutó OK
+      const isWriteAction = ['add', 'mark'].some(prefix => action.startsWith(prefix));
+      if (isWriteAction) {
+        console.warn('Apps Script respondió HTML en vez de JSON, pero la operación probablemente funcionó.', text.slice(0, 200));
+        return { status: 'success' };
+      }
+      throw new Error('El servidor devolvió una respuesta inesperada.');
+    }
+
+    if (data.status === 'error') throw new Error(data.message || 'Error desconocido del servidor');
+    return data;
+
+  } catch (err) {
+    console.error(`[fetchAPI] ${action}:`, err);
+    throw err;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════════════
+
+function showView(viewName) {
+  Object.values(views).forEach(v => { if (v) v.classList.remove('active'); });
+  if (views[viewName]) views[viewName].classList.add('active');
+}
+
 function showLogin() {
-    views.dashboard.classList.remove('active');
-    if (views.adminDashboard) views.adminDashboard.classList.remove('active');
-    views.login.classList.add('active');
-    loadKines();
+  showView('login');
+  pinValue = '';
+  updatePinDisplay();
+  loadKines();
 }
 
-async function loadKines() {
-    const kineSelector = document.getElementById('kine-selector');
-    try {
-        const res = await fetchAPI('getKines');
-        if (res.status === 'success') {
-            let html = '<option value="" disabled selected>Seleccione su perfil</option>';
-            res.data.forEach(k => {
-                html += `<option value="${k.id}">${k.nombre} (ID: ${k.id})</option>`;
-            });
-            kineSelector.innerHTML = html;
-        }
-    } catch (error) {
-        kineSelector.innerHTML = '<option value="" disabled selected>Error cargando perfiles</option>';
-    }
+function doLogout() {
+  localStorage.removeItem('kine_session');
+  state = { kineId: null, kineName: null, patients: [], selectedPatientId: null };
+  showLogin();
 }
 
-// --- Funciones de Administrador ---
+async function showKineDashboard() {
+  showView('dashboard');
+  greetingEl.textContent = `Hola, ${state.kineName || 'Kinesiólogo'}`;
 
-async function handleAdminLogin(pin) {
-    setButtonLoading(btnLogin, true);
-    try {
-        const res = await fetchAPI('adminLogin', { pin: pin });
-        if (res.status === 'success') {
-            localStorage.setItem('kine_session', JSON.stringify({ role: 'admin' }));
-            showAdminDashboard();
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error de acceso',
-            text: 'PIN de administrador incorrecto.',
-            confirmButtonColor: '#0F62FE'
-        });
-    } finally {
-        setButtonLoading(btnLogin, false);
+  patientSelector.innerHTML = '<option value="" disabled selected>Cargando pacientes...</option>';
+  patientInfoPanel.classList.add('hidden');
+  notesInput.value = '';
+  btnMarkAttendance.disabled = true;
+  historyList.innerHTML = `<div class="empty-state"><div class="spinner"></div><p>Cargando...</p></div>`;
+
+  try {
+    const res = await fetchAPI('getDashboard', { id_kine: state.kineId });
+    if (res.status === 'success') {
+      state.patients = res.data.pacientes || [];
+      renderPatientSelector();
+      renderHistory(res.data.historial || []);
     }
+  } catch (err) {
+    historyList.innerHTML = `<div class="empty-state"><p>No se pudo cargar el panel. Intente de nuevo.</p></div>`;
+    patientSelector.innerHTML = '<option value="" disabled selected>Error cargando pacientes</option>';
+  }
 }
 
 async function showAdminDashboard() {
-    views.login.classList.remove('active');
-    views.dashboard.classList.remove('active');
-    views.adminDashboard.classList.add('active');
-    
-    // Cargar lista de pacientes
-    try {
-        const res = await fetchAPI('getAdminData');
-        if (res.status === 'success') {
-            let html = '<option value="" disabled selected>Seleccione un paciente</option>';
-            res.data.pacientes.forEach(p => {
-                html += `<option value="${p.id}">${p.nombre}</option>`;
-            });
-            adminPatientSelectorPlan.innerHTML = html;
-            adminPatientSelectorPayment.innerHTML = html;
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo cargar la base de datos.',
-            confirmButtonColor: '#0F62FE'
-        });
+  showView('admin');
+  await loadAdminPatients();
+}
+
+// ════════════════════════════════════════════════════════════════
+// KINE LOGIC
+// ════════════════════════════════════════════════════════════════
+
+async function loadKines() {
+  try {
+    const res = await fetchAPI('getKines');
+    if (res.status === 'success') {
+      let html = '<option value="" disabled selected>Selecciona tu perfil</option>';
+      res.data.forEach(k => { html += `<option value="${k.id}">${k.nombre}</option>`; });
+      kineSelector.innerHTML = html;
     }
+  } catch (_) {
+    kineSelector.innerHTML = '<option value="" disabled selected>Error cargando perfiles</option>';
+  }
+}
+
+async function handleKineLogin(id, pin) {
+  btnLogin.disabled = true;
+  btnLogin.textContent = '...';
+
+  try {
+    const res = await fetchAPI('login', { id_kine: id, pin });
+    if (res.status === 'success') {
+      state.kineId   = res.data.id;
+      state.kineName = res.data.nombre;
+      localStorage.setItem('kine_session', JSON.stringify({ id: state.kineId, nombre: state.kineName }));
+      await showKineDashboard();
+    }
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'PIN incorrecto', text: err.message || 'Verifica tu PIN e intenta nuevamente.', background: '#1e2535', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+    pinValue = '';
+    updatePinDisplay();
+  } finally {
+    btnLogin.disabled = pinValue.length < 4;
+    btnLogin.textContent = '↵';
+  }
+}
+
+function renderPatientSelector() {
+  if (!state.patients.length) {
+    patientSelector.innerHTML = '<option value="" disabled selected>No hay pacientes activos</option>';
+    return;
+  }
+  let html = '<option value="" disabled selected>Selecciona un paciente</option>';
+  state.patients.forEach(p => { html += `<option value="${p.id}">${p.nombre}</option>`; });
+  patientSelector.innerHTML = html;
+}
+
+function renderHistory(historial) {
+  if (!historial.length) {
+    historyList.innerHTML = `<div class="empty-state"><p>Aún no hay asistencias registradas hoy.</p></div>`;
+    return;
+  }
+
+  historyList.innerHTML = historial.map(item => {
+    const date = new Date(item.fecha).toLocaleString('es-CL', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    return `
+      <div class="history-item">
+        <div class="history-item-header">
+          <span class="history-patient">${item.paciente}</span>
+          <span class="history-date">${date}</span>
+        </div>
+        ${item.notas ? `<p class="history-notes">"${item.notas}"</p>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadPatientStatus(patientId) {
+  try {
+    const res = await fetchAPI('getPatientStatus', { id_paciente: patientId });
+    if (res.status === 'success') {
+      const { sesionesRestantes, pagoAlDia } = res.data;
+
+      sessionsCount.textContent = sesionesRestantes;
+      if (sesionesRestantes <= 0)      sessionsCount.className = 'stat-value color-red';
+      else if (sesionesRestantes <= 2) sessionsCount.className = 'stat-value color-yellow';
+      else                              sessionsCount.className = 'stat-value color-green';
+
+      if (pagoAlDia) {
+        paymentStatusText.textContent = '✓ Al día';
+        paymentStatusText.className = 'stat-value color-green';
+      } else {
+        paymentStatusText.textContent = '✕ Pendiente';
+        paymentStatusText.className = 'stat-value color-red';
+      }
+    }
+  } catch (_) {
+    sessionsCount.textContent = '—';
+    paymentStatusText.textContent = '—';
+  }
+}
+
+async function handleMarkAttendance() {
+  Swal.fire({ title: 'Registrando asistencia...', text: 'Por favor espera un momento.', allowOutsideClick: false, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9', didOpen: () => Swal.showLoading() });
+
+  const notas = notesInput.value.trim();
+  try {
+    const res = await fetchAPI('markAttendance', {
+      id_kine: state.kineId,
+      id_paciente: state.selectedPatientId,
+      notas
+    });
+
+    if (res.status === 'success') {
+      await Swal.fire({ icon: 'success', title: '¡Asistencia registrada!', timer: 1800, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9' });
+      notesInput.value = '';
+      await showKineDashboard();
+    }
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo registrar. Intente nuevamente.', background: '#1e2535', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// ADMIN LOGIC
+// ════════════════════════════════════════════════════════════════
+
+async function handleAdminLogin(pin) {
+  btnLogin.disabled = true;
+  btnLogin.textContent = '...';
+
+  try {
+    const res = await fetchAPI('adminLogin', { pin });
+    if (res.status === 'success') {
+      localStorage.setItem('kine_session', JSON.stringify({ role: 'admin' }));
+      await showAdminDashboard();
+    }
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'PIN incorrecto', text: 'El PIN de administrador no es válido.', background: '#1e2535', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+    pinValue = '';
+    updatePinDisplay();
+  } finally {
+    btnLogin.disabled = pinValue.length < 4;
+    btnLogin.textContent = '↵';
+  }
+}
+
+async function loadAdminPatients() {
+  const loadingOption = '<option value="" disabled selected>Cargando pacientes...</option>';
+  adminPatientSelectorPlan.innerHTML    = loadingOption;
+  adminPatientSelectorPayment.innerHTML = loadingOption;
+
+  try {
+    const res = await fetchAPI('getAdminData');
+    if (res.status === 'success') {
+      const opts = res.data.pacientes.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+      const base = '<option value="" disabled selected>Selecciona un paciente</option>';
+      adminPatientSelectorPlan.innerHTML    = base + opts;
+      adminPatientSelectorPayment.innerHTML = base + opts;
+    }
+  } catch (err) {
+    const errOption = '<option value="" disabled selected>Error cargando pacientes</option>';
+    adminPatientSelectorPlan.innerHTML    = errOption;
+    adminPatientSelectorPayment.innerHTML = errOption;
+  }
 }
 
 async function submitPatient() {
-    Swal.fire({
-        title: 'Guardando...',
-        text: 'Registrando paciente, esto puede tardar unos segundos...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-    
-    try {
-        const res = await fetchAPI('addPatient', {
-            nombre: document.getElementById('input-patient-name').value,
-            telefono: document.getElementById('input-patient-phone').value,
-            domicilio: document.getElementById('input-patient-address').value
-        });
-        
-        if (res.status === 'success') {
-            Swal.fire('Éxito', 'Paciente registrado correctamente', 'success');
-            formAddPatient.reset();
-            showAdminDashboard(); // recargar selectores
-        }
-    } catch (error) {
-        Swal.fire('Error', 'No se pudo guardar el paciente', 'error');
-    }
+  const nombre    = document.getElementById('input-patient-name').value.trim();
+  const telefono  = document.getElementById('input-patient-phone').value.trim();
+  const domicilio = document.getElementById('input-patient-address').value.trim();
+
+  Swal.fire({ title: 'Guardando paciente...', text: 'Registrando en Google Sheets. Puede tardar unos segundos.', allowOutsideClick: false, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9', didOpen: () => Swal.showLoading() });
+
+  try {
+    await fetchAPI('addPatient', { nombre, telefono, domicilio });
+    formAddPatient.reset();
+    Swal.fire({ icon: 'success', title: 'Paciente registrado', timer: 2000, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9' });
+    await loadAdminPatients();
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar. Intente nuevamente.', background: '#1e2535', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+  }
 }
 
 async function submitPlan() {
-    Swal.fire({
-        title: 'Guardando...',
-        text: 'Registrando el plan en Google Sheets, esto puede tardar unos segundos...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
+  Swal.fire({ title: 'Guardando plan...', text: 'Registrando en Google Sheets. Puede tardar unos segundos.', allowOutsideClick: false, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9', didOpen: () => Swal.showLoading() });
+
+  try {
+    await fetchAPI('addPlan', {
+      id_paciente:       adminPatientSelectorPlan.value,
+      tipo_plan:         document.getElementById('input-tipo-plan').value,
+      cantidad_sesiones: document.getElementById('input-cantidad-sesiones').value,
+      valor_total:       document.getElementById('input-valor-plan').value
     });
-    
-    try {
-        const res = await fetchAPI('addPlan', {
-            id_paciente: adminPatientSelectorPlan.value,
-            tipo_plan: document.getElementById('input-tipo-plan').value,
-            cantidad_sesiones: document.getElementById('input-cantidad-sesiones').value,
-            valor_total: document.getElementById('input-valor-plan').value
-        });
-        
-        if (res.status === 'success') {
-            Swal.fire('Éxito', 'Plan registrado en Google Sheets', 'success');
-            formAddPlan.reset();
-        }
-    } catch (error) {
-        Swal.fire('Error', 'No se pudo guardar el plan', 'error');
-    }
+    formAddPlan.reset();
+    Swal.fire({ icon: 'success', title: 'Plan registrado', timer: 2000, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9' });
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar. Intente nuevamente.', background: '#1e2535', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+  }
 }
 
 async function submitPayment() {
-    Swal.fire({
-        title: 'Guardando...',
-        text: 'Registrando el pago, esto puede tardar unos segundos...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
+  Swal.fire({ title: 'Registrando pago...', text: 'Guardando en Google Sheets. Puede tardar unos segundos.', allowOutsideClick: false, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9', didOpen: () => Swal.showLoading() });
+
+  try {
+    await fetchAPI('addPayment', {
+      id_paciente:  adminPatientSelectorPayment.value,
+      monto_pagado: document.getElementById('input-monto-pago').value
     });
-    
-    try {
-        const res = await fetchAPI('addPayment', {
-            id_paciente: adminPatientSelectorPayment.value,
-            monto_pagado: document.getElementById('input-monto-pago').value
-        });
-        
-        if (res.status === 'success') {
-            Swal.fire('Éxito', 'Pago registrado en Google Sheets', 'success');
-            formAddPayment.reset();
-        }
-    } catch (error) {
-        Swal.fire('Error', 'No se pudo guardar el pago', 'error');
-    }
+    formAddPayment.reset();
+    Swal.fire({ icon: 'success', title: 'Pago registrado', timer: 2000, showConfirmButton: false, background: '#1e2535', color: '#f1f5f9' });
+  } catch (err) {
+    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar. Intente nuevamente.', background: '#1e2535', color: '#f1f5f9', confirmButtonColor: '#3b82f6' });
+  }
+}
+
+// ─── Utility ───────────────────────────────────────────────────
+function showToast(icon, title) {
+  Swal.fire({
+    toast: true, position: 'top-end', icon, title,
+    showConfirmButton: false, timer: 3000, timerProgressBar: true,
+    background: '#1e2535', color: '#f1f5f9'
+  });
 }
