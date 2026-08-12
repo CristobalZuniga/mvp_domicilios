@@ -70,7 +70,7 @@ Sigue estos pasos cuidadosamente para poner en marcha el sistema.
 5. Haz clic en el botón azul **Implementar** (arriba a la derecha) > **Nueva implementación**.
 6. En "Seleccionar tipo", elige **Aplicación web** (el ícono del engranaje ⚙️).
 7. Completa la configuración exactamente así:
-   - **Descripción**: v1
+   - **Descripción**: v2 (o la versión que corresponda)
    - **Ejecutar como**: `Yo (tu_correo@gmail.com)`
    - **Quién tiene acceso**: `Cualquier persona` (¡Muy importante para que funcione!)
 8. Haz clic en **Implementar**.
@@ -96,3 +96,23 @@ Sube los archivos (`index.html`, `style.css` y `app.js`) a un servicio de hostin
 - **No compartas el Google Sheets con los kinesiólogos.** El frontend actúa como una capa que solo les muestra lo que necesitan ver.
 - El código backend nunca envía información sobre montos de dinero al frontend (solo envía un estado `true`/`false` de si el pago está al día).
 - Todo registro de asistencia se graba con la hora del servidor de Google para evitar manipulaciones de hora desde el celular del profesional.
+
+---
+
+## 👑 Módulo Administrador
+
+El sistema cuenta con un panel exclusivo para que el administrador gestione Planes y Pagos directamente desde la web.
+
+### ¿Cómo ingresar como Administrador?
+1. En la pantalla de Login, selecciona la pestaña **Administrador**.
+2. Ingresa el **PIN** de administrador.
+3. El PIN por defecto es `9999`.
+
+### (Opcional) Cambiar el PIN de Administrador
+Si deseas cambiar el PIN o agregar varios administradores:
+1. En tu Google Sheets, crea una nueva pestaña llamada exactamente `Administradores`.
+2. En la fila 1 agrega los encabezados:
+   - A1: `Nombre`
+   - B1: `PIN_Acceso`
+3. Agrega tus datos en las filas de abajo (ej. `Admin Principal` | `tu_nuevo_pin`).
+Al hacer esto, el sistema desactivará el PIN por defecto (`9999`) y solo aceptará los PINs que configures en esta hoja.

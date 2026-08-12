@@ -39,6 +39,22 @@ function handleResponse(e) {
           e.parameter.id_paciente, 
           e.parameter.notas
         ));
+      case 'adminLogin':
+        return setCorsHeaders(adminLogin(e.parameter.pin));
+      case 'getAdminData':
+        return setCorsHeaders(getAdminData());
+      case 'addPlan':
+        return setCorsHeaders(addPlan(
+          e.parameter.id_paciente,
+          e.parameter.tipo_plan,
+          e.parameter.cantidad_sesiones,
+          e.parameter.valor_total
+        ));
+      case 'addPayment':
+        return setCorsHeaders(addPayment(
+          e.parameter.id_paciente,
+          e.parameter.monto_pagado
+        ));
       default:
         return setCorsHeaders({ status: 'error', message: 'Action not found' });
     }
@@ -199,4 +215,69 @@ function markAttendance(idKine, idPaciente, notas) {
       fecha: fechaHoraServidor
     }
   };
+}
+
+// --- FUNCIONES DE ADMINISTRADOR ---
+
+function adminLogin(pin) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Administradores');
+  
+  if (sheet) {
+    const data = getSheetData('Administradores');
+    const admin = data.find(a => a.PIN_Acceso && a.PIN_Acceso.toString() === pin.toString());
+    if (admin) {
+      return { status: 'success', data: { role: 'admin' } };
+    }
+  } else {
+    if (pin === '9999') { // Hardcoded fallback for MVP if sheet doesn't exist
+      return { status: 'success', data: { role: 'admin' } };
+    }
+  }
+  return { status: 'error', message: 'Credenciales de administrador inválidas' };
+}
+
+function getAdminData() {
+  const pacientes = getSheetData('Pacientes');
+  const pacientesList = pacientes.map(p => ({
+    id: p.ID_Paciente,
+    nombre: p.Nombre
+  }));
+  return { status: 'success', data: { pacientes: pacientesList } };
+}
+
+function addPlan(idPaciente, tipoPlan, cantidadSesiones, valorTotal) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Compras_Planes');
+  if (!sheet) throw new Error('Hoja Compras_Planes no encontrada');
+  
+  const idCompra = 'CMP-' + new Date().getTime();
+  
+  sheet.appendRow([
+    idCompra,
+    new Date(),
+    idPaciente,
+    tipoPlan,
+    cantidadSesiones,
+    valorTotal
+  ]);
+  
+  return { status: 'success', message: 'Plan registrado correctamente' };
+}
+
+function addPayment(idPaciente, montoPagado) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Pagos');
+  if (!sheet) throw new Error('Hoja Pagos no encontrada');
+  
+  const idPago = 'PAG-' + new Date().getTime();
+  
+  sheet.appendRow([
+    idPago,
+    new Date(),
+    idPaciente,
+    montoPagado
+  ]);
+  
+  return { status: 'success', message: 'Pago registrado correctamente' };
 }

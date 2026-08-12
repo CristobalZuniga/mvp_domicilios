@@ -27,8 +27,13 @@
                 <p>Gestión de Asistencias a Domicilio</p>
             </div>
             
+            <div class="login-tabs">
+                <button type="button" class="tab-btn active" id="tab-kine">Kinesiólogo</button>
+                <button type="button" class="tab-btn" id="tab-admin">Administrador</button>
+            </div>
+            
             <form id="login-form">
-                <div class="input-group">
+                <div class="input-group" id="kine-selector-group">
                     <label for="kine-selector">Kinesiólogo</label>
                     <div class="select-wrapper">
                         <select id="kine-selector" required>
@@ -112,6 +117,81 @@
                         <p>Cargando historial...</p>
                     </div>
                 </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- Pantalla Principal (Admin Dashboard) -->
+    <section id="admin-dashboard-view" class="view">
+        <header class="app-header admin-header">
+            <div class="header-content">
+                <h2>Panel de Administración</h2>
+                <button id="btn-admin-logout" class="btn-icon" aria-label="Cerrar sesión">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="admin-tabs">
+                <button class="admin-tab-btn active" data-target="panel-planes">Planes</button>
+                <button class="admin-tab-btn" data-target="panel-pagos">Pagos</button>
+            </div>
+
+            <!-- Panel Planes -->
+            <div id="panel-planes" class="admin-panel active card">
+                <h3>Ingresar Nuevo Plan</h3>
+                <form id="form-add-plan">
+                    <div class="input-group">
+                        <label>Paciente</label>
+                        <div class="select-wrapper">
+                            <select id="admin-patient-selector-plan" required>
+                                <option value="" disabled selected>Cargando pacientes...</option>
+                            </select>
+                            <svg class="select-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Tipo de Plan</label>
+                        <input type="text" id="input-tipo-plan" placeholder="Ej: Plan Mensual 10 Sesiones" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Cantidad de Sesiones</label>
+                        <input type="number" id="input-cantidad-sesiones" min="1" placeholder="Ej: 10" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Valor Total ($)</label>
+                        <input type="number" id="input-valor-plan" min="0" placeholder="Ej: 300000" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-submit-plan">
+                        <span class="btn-text">Guardar Plan</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Panel Pagos -->
+            <div id="panel-pagos" class="admin-panel card hidden">
+                <h3>Ingresar Nuevo Pago</h3>
+                <form id="form-add-payment">
+                    <div class="input-group">
+                        <label>Paciente</label>
+                        <div class="select-wrapper">
+                            <select id="admin-patient-selector-payment" required>
+                                <option value="" disabled selected>Cargando pacientes...</option>
+                            </select>
+                            <svg class="select-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Monto Pagado ($)</label>
+                        <input type="number" id="input-monto-pago" min="1" placeholder="Ej: 150000" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-submit-payment">
+                        <span class="btn-text">Guardar Pago</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
             </div>
         </main>
     </section>
