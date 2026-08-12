@@ -183,7 +183,11 @@
 
         <main class="main-content">
             <div class="admin-sidenav">
-                <button class="sidenav-btn active" data-target="panel-pacientes">
+                <button class="sidenav-btn active" data-target="panel-resumen">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    Resumen
+                </button>
+                <button class="sidenav-btn" data-target="panel-pacientes">
                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Pacientes
                 </button>
@@ -198,8 +202,25 @@
             </div>
 
             <div class="admin-content">
+                <!-- Panel Resumen -->
+                <div id="panel-resumen" class="admin-panel panel-card active">
+                    <div class="panel-header">
+                        <div class="panel-icon panel-icon--blue">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        </div>
+                        <div>
+                            <h2>Estado de Pacientes</h2>
+                            <p class="panel-subtitle">Resumen financiero y de sesiones de todos los pacientes activos</p>
+                        </div>
+                    </div>
+                    <div id="overview-summary-bar" class="overview-summary-bar hidden"></div>
+                    <div id="overview-list" class="overview-list">
+                        <div class="empty-state"><div class="spinner"></div><p>Cargando resumen...</p></div>
+                    </div>
+                </div>
+
                 <!-- Panel Pacientes -->
-                <div id="panel-pacientes" class="admin-panel panel-card active">
+                <div id="panel-pacientes" class="admin-panel panel-card hidden">
                     <div class="panel-header">
                         <div class="panel-icon panel-icon--green">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>

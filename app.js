@@ -340,8 +340,118 @@ async function showKineDashboard() {
 
 async function showAdminDashboard() {
   showView('admin');
-  await loadAdminPatients();
+  await Promise.all([loadAdminPatients(), loadPatientOverview()]);
 }
+
+async function loadPatientOverview() {
+  const overviewList       = document.getElementById('overview-list');
+  const overviewSummaryBar = document.getElementById('overview-summary-bar');
+
+  overviewList.innerHTML = `<div class="empty-state"><div class="spinner"></div><p>Cargando resumen...</p></div>`;
+  overviewSummaryBar.classList.add('hidden');
+
+  try {
+    const res = await fetchAPI('getPatientOverview');
+    if (res.status === 'success') {
+      renderOverview(res.data, overviewList, overviewSummaryBar);
+    }
+  } catch (err) {
+    overviewList.innerHTML = `<div class="empty-state"><p>No se pudo cargar el resumen. Intenta de nuevo.</p></div>`;
+  }
+}
+
+function renderOverview(patients, listEl, barEl) {
+  if (!patients.length) {
+    listEl.innerHTML = `<div class="empty-state"><p>No hay pacientes activos registrados.</p></div>`;
+    return;
+  }
+
+  // KPI summary bar
+  const totalDeuda    = patients.reduce((s, p) => s + Math.max(0, p.saldoPendiente), 0);
+  const conDeuda      = patients.filter(p => p.saldoPendiente > 0).length;
+  const sinSesiones   = patients.filter(p => p.sesionesRestantes <= 2).length;
+  const alDia         = patients.filter(p => p.pagoAlDia && p.sesionesRestantes > 2).length;
+
+  barEl.innerHTML = `
+    <div class="kpi-card">
+      <span class="kpi-label">Con deuda</span>
+      <span class="kpi-value ${conDeuda > 0 ? 'kpi-red' : 'kpi-green'}">${conDeuda}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Pocas sesiones</span>
+      <span class="kpi-value ${sinSesiones > 0 ? 'kpi-yellow' : 'kpi-green'}">${sinSesiones}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Total deuda</span>
+      <span class="kpi-value kpi-red">${totalDeuda > 0 ? '$' + totalDeuda.toLocaleString('es-CL') : '—'}</span>
+    </div>
+  `;
+  barEl.classList.remove('hidden');
+
+  // Patient rows
+  listEl.innerHTML = patients.map(p => {
+    const hasPlan = p.tienePlan;
+    const debt    = p.saldoPendiente;
+    const sesLeft = p.sesionesRestantes;
+    const sesTotal = p.totalSesiones;
+
+    // Row color class
+    let rowClass = 'row--ok';
+    if (debt > 0 || !hasPlan)        rowClass = 'row--alert';
+    else if (sesLeft <= 2)           rowClass = 'row--warn';
+
+    // Badges
+    const badges = [];
+    if (!hasPlan) {
+      badges.push(`<span class="badge badge-purple">Sin plan activo</span>`);
+    } else {
+      if (sesLeft <= 0) {
+        badges.push(`<span class="badge badge-red">Sin sesiones</span>`);
+      } else if (sesLeft <= 2) {
+        badges.push(`<span class="badge badge-yellow">${sesLeft} sesión${sesLeft !== 1 ? 'es' : ''} restante${sesLeft !== 1 ? 's' : ''}</span>`);
+      } else {
+        badges.push(`<span class="badge badge-green">${sesLeft} sesiones</span>`);
+      }
+    }
+
+    if (debt > 0) {
+      badges.push(`<span class="badge badge-red">Debe $${debt.toLocaleString('es-CL')}</span>`);
+    } else if (hasPlan) {
+      badges.push(`<span class="badge badge-green">Pago al día</span>`);
+    }
+
+    // Progress bar for sessions
+    let barFill = '', barColor = 'fill-green', barLabel = '';
+    if (hasPlan && sesTotal > 0) {
+      const pct = Math.max(0, Math.min(100, (sesLeft / sesTotal) * 100));
+      barColor  = pct > 40 ? 'fill-green' : pct > 15 ? 'fill-yellow' : 'fill-red';
+      barFill   = `<div class="session-bar"><div class="session-bar-fill ${barColor}" style="width:${pct}%"></div></div>`;
+      barLabel  = `<span class="session-bar-label">${p.realizadas}/${sesTotal} realizadas</span>`;
+    }
+
+    const saldoClass = debt > 0 ? 'saldo-debt' : 'saldo-ok';
+    const saldoText  = debt > 0
+      ? `-$${debt.toLocaleString('es-CL')}`
+      : (hasPlan ? 'Al día ✓' : '—');
+
+    const phoneStr = p.telefono ? `<span class="overview-phone">${p.telefono}</span>` : '';
+
+    return `
+      <div class="overview-row ${rowClass}">
+        <div class="overview-row-left">
+          <span class="overview-name">${p.nombre}</span>
+          ${phoneStr}
+          <div class="overview-badges">${badges.join('')}</div>
+        </div>
+        <div class="overview-right">
+          ${barFill ? `<div class="session-bar-wrap">${barLabel}${barFill}</div>` : ''}
+          <span class="overview-saldo ${saldoClass}">${saldoText}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 
 // ════════════════════════════════════════════════════════════════
 // KINE LOGIC

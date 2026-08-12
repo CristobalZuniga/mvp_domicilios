@@ -43,6 +43,8 @@ function handleResponse(e) {
         return setCorsHeaders(adminLogin(e.parameter.pin));
       case 'getAdminData':
         return setCorsHeaders(getAdminData());
+      case 'getPatientOverview':
+        return setCorsHeaders(getPatientOverview());
       case 'addPlan':
         return setCorsHeaders(addPlan(
           e.parameter.id_paciente,
@@ -308,4 +310,57 @@ function addPatient(nombre, telefono, domicilio) {
     message: 'Paciente registrado correctamente',
     data: { id: idPaciente, nombre: nombre } 
   };
+}
+
+// --- RESUMEN DE PACIENTES (Admin Overview) ---
+function getPatientOverview() {
+  const pacientes   = getSheetData('Pacientes');
+  const compras     = getSheetData('Compras_Planes');
+  const asistencias = getSheetData('Asistencias');
+  const pagos       = getSheetData('Pagos');
+
+  const activePacientes = pacientes.filter(p =>
+    p.Estado_Activo === true || p.Estado_Activo === 'TRUE' || p.Estado_Activo === 1
+  );
+
+  const overview = activePacientes.map(p => {
+    const id = p.ID_Paciente ? p.ID_Paciente.toString() : '';
+
+    const comprasPac = compras.filter(c => c.ID_Paciente && c.ID_Paciente.toString() === id);
+    const totalSesionesCompradas = comprasPac.reduce((s, c) => s + Number(c.Cantidad_Sesiones || 0), 0);
+    const totalValorCompras      = comprasPac.reduce((s, c) => s + Number(c.Valor_Total || 0), 0);
+
+    const asistPac = asistencias.filter(a => a.ID_Paciente && a.ID_Paciente.toString() === id);
+    const totalSesionesRealizadas = asistPac.length;
+
+    const pagosPac   = pagos.filter(pg => pg.ID_Paciente && pg.ID_Paciente.toString() === id);
+    const totalPagado = pagosPac.reduce((s, pg) => s + Number(pg.Monto_Pagado || 0), 0);
+
+    const sesionesRestantes = totalSesionesCompradas - totalSesionesRealizadas;
+    const saldoPendiente    = totalValorCompras - totalPagado;
+    const tienePlan         = comprasPac.length > 0;
+
+    return {
+      id:                   id,
+      nombre:               p.Nombre || '(Sin nombre)',
+      telefono:             p.Telefono || '',
+      sesionesRestantes:    sesionesRestantes,
+      totalSesiones:        totalSesionesCompradas,
+      realizadas:           totalSesionesRealizadas,
+      saldoPendiente:       saldoPendiente,
+      totalPagado:          totalPagado,
+      totalDeuda:           totalValorCompras,
+      tienePlan:            tienePlan,
+      pagoAlDia:            saldoPendiente <= 0
+    };
+  });
+
+  // Ordenar: primero los con problemas (deuda o sin sesiones)
+  overview.sort((a, b) => {
+    const scoreA = (a.saldoPendiente > 0 ? 2 : 0) + (a.sesionesRestantes <= 2 ? 1 : 0);
+    const scoreB = (b.saldoPendiente > 0 ? 2 : 0) + (b.sesionesRestantes <= 2 ? 1 : 0);
+    return scoreB - scoreA;
+  });
+
+  return { status: 'success', data: overview };
 }
