@@ -87,7 +87,7 @@ Sigue estos pasos cuidadosamente para poner en marcha el sistema.
 
 ### Paso 4: Publicar el Frontend
 
-Sube el contenido de la carpeta `frontend/` (los archivos `index.html`, `style.css` y `app.js`) a un servicio de hosting estático como GitHub Pages, Netlify o Vercel.
+Sube los archivos (`index.html`, `style.css` y `app.js`) a un servicio de hosting estático como GitHub Pages, Netlify o Vercel. En GitHub Pages, ve a Settings > Pages y selecciona la rama `main` en la ruta `/ (root)` para desplegar.
 
 ---
 
